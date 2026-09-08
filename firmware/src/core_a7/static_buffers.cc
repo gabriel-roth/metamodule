@@ -6,6 +6,7 @@
 #include "param_block.hh"
 #include "patch_file/patch_dir_list.hh"
 #include "sync_params.hh"
+#include "usb/dev_drive_block.hh"
 #include "usb/usb_connection_status_block.hh"
 #include <array>
 
@@ -55,6 +56,8 @@ __attribute__((section(".ddma"))) DeviceSettingsMessage icc_device_settings_mess
 // Cross-core USB connection status: written by the M4, read by the A7 GUI/SDK.
 __attribute__((section(".ddma"))) UsbConnectionStatusBlock usb_connection_status;
 
+__attribute__((section(".ddma"))) DevDriveBlock dev_drive_block;
+
 void init() {
 	for (auto &block : param_blocks) {
 		for (auto &param : block.params) {
@@ -84,20 +87,12 @@ void init() {
 			frame = StreamConf::Audio::AudioInFrame{};
 	}
 
-	console_a7_0_buff.writer_ref_count = 0;
-	console_a7_0_buff.current_write_pos = 0;
-	console_a7_0_buff.buffer.data[0] = 0;
-	console_a7_0_buff.use_color = false;
-
-	console_a7_1_buff.writer_ref_count = 0;
-	console_a7_1_buff.current_write_pos = 0;
-	console_a7_1_buff.buffer.data[0] = 0;
-	console_a7_1_buff.use_color = false;
-
-	console_m4_buff.writer_ref_count = 0;
-	console_m4_buff.current_write_pos = 0;
-	console_m4_buff.buffer.data[0] = 0;
-	console_m4_buff.use_color = false;
+	console_a7_0_buff.write_pos = 0;
+	console_a7_0_buff.read_pos = 0;
+	console_a7_1_buff.write_pos = 0;
+	console_a7_1_buff.read_pos = 0;
+	console_m4_buff.write_pos = 0;
+	console_m4_buff.read_pos = 0;
 }
 
 }; // namespace StaticBuffers

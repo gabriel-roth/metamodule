@@ -46,6 +46,12 @@ static void write(ryml::NodeRef *n, AudioSettings const &s) {
 	n->append_child() << ryml::key("sample_rate") << s.sample_rate;
 	n->append_child() << ryml::key("block_size") << s.block_size;
 	n->append_child() << ryml::key("max_overrun_retries") << s.max_overrun_retries;
+
+	using enum AudioSettings::AutoRebalance;
+	ryml::csubstr auto_rebalance_string = s.auto_rebalance == Off		? "Off" :
+										  s.auto_rebalance == EveryLoad ? "EveryLoad" :
+																		  "AfterOverload";
+	n->append_child() << ryml::key("auto_rebalance") << auto_rebalance_string;
 }
 
 static void write(ryml::NodeRef *n, PluginPreloadSettings const &s) {
@@ -139,6 +145,12 @@ static void write(ryml::NodeRef *n, VideoSettings const &s) {
 	n->append_child() << ryml::key("mirror") << s.mirror;
 }
 
+static void write(ryml::NodeRef *n, DeveloperSettings const &s) {
+	*n |= ryml::MAP;
+
+	n->append_child() << ryml::key("enabled") << s.enabled;
+}
+
 static void write(ryml::NodeRef *n, MissingPluginSettings const &s) {
 	*n |= ryml::MAP;
 
@@ -178,6 +190,7 @@ uint32_t serialize(UserSettings const &settings, std::span<char> buffer) {
 	data["button_exp_knobset"] << settings.button_exp_knobset;
 	data["notifications"] << settings.notifications;
 	data["video"] << settings.video;
+	data["developer"] << settings.developer;
 
 	{
 		using enum UsbRoleMode;
@@ -188,9 +201,7 @@ uint32_t serialize(UserSettings const &settings, std::span<char> buffer) {
 	}
 
 	using enum UsbDeviceMode;
-	ryml::csubstr usb_mode_string = settings.usb_device_mode == Video ? "Video" :
-									settings.usb_device_mode == Midi	 ? "MIDI" :
-																		   "Console";
+	ryml::csubstr usb_mode_string = settings.usb_device_mode == Video ? "Video" : "MidiConsole";
 	data["usb_device_mode"] << usb_mode_string;
 
 	auto res = ryml::emit_yaml(tree, c4::substr(buffer.data(), buffer.size()));

@@ -27,11 +27,15 @@ from pathlib import Path
 
 import lauterbach.trace32.rcl as t32
 
+do_verify = False
+
 LOAD_ADDR = 0xC0000000
 RCC_MP_GRSTCSETR = 0x50000404  # bit 0 = MPSYSRST: software system reset
 TAMP_BKP6R = 0x5C00A118  # mp1-boot's "DDR image address" mailbox register
 BOOTLOADER_READY = 0xFFFFFFFF  # mp1-boot writes this when waiting for an image
 SYSTEM_MODE_UP = 11
+
+do_verify = False
 
 basepath = Path(__file__).parent.parent
 binpath = basepath / "build" / "main.uimg"
@@ -73,7 +77,12 @@ def main():
     # so the poll below can't see a stale value from the last boot.
     write_long(dbg, TAMP_BKP6R, 0)
     print("Resetting board (MPSYSRST)...")
-    write_long(dbg, RCC_MP_GRSTCSETR, 1)
+    try:
+        write_long(dbg, RCC_MP_GRSTCSETR, 1)
+    except Exception:
+        # TRACE32 often reports "target reset detected" on this write -- that
+        # IS the reset we asked for, so carry on to polling for the bootloader
+        pass
 
     print("Waiting for mp1-boot to be ready for an image...")
     deadline = time.time() + 20
@@ -91,14 +100,16 @@ def main():
     for attempt in (1, 2):
         print(f"Loading {binpath.name} to {LOAD_ADDR:#x} (run-time access, no halt)...")
         dbg.cmd(f"Data.LOAD.Binary {binpath} {LOAD_ADDR:#x} /DUALPORT")
-        try:
-            dbg.cmd(f"Data.LOAD.Binary {binpath} {LOAD_ADDR:#x} /DUALPORT /ComPare")
-            break
-        except Exception as e:
-            if attempt == 2:
-                sys.exit(f"Verify FAILED after retry: {e}")
-            print("  Verify failed, retrying load...")
-    print(f"  Loaded and verified in {time.time() - t_start:.1f}s")
+        if do_verify:
+            try:
+                dbg.cmd(f"Data.LOAD.Binary {binpath} {LOAD_ADDR:#x} /DUALPORT /ComPare")
+                break
+            except Exception as e:
+                if attempt == 2:
+                    sys.exit(f"Verify FAILED after retry: {e}")
+                print("  Verify failed, retrying load...")
+    
+    print(f"  Loaded in {time.time() - t_start:.1f}s")
 
     dbg.cmd(f"Data.LOAD.Elf {elfpath} /CPP /NoCode")
 

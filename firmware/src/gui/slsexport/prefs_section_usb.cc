@@ -24,6 +24,12 @@ void PrefsSectionUSB::create(lv_obj_t *parent) {
 	mirror_check = lv_obj_get_child(mirror_cont, 1);
 
 	create_prefs_note(mirror_cont, "Flip USB video horizontally");
+
+	auto dev_drive_cont = create_prefs_labeled_check(parent, "Developer Mode:");
+	dev_drive_check = lv_obj_get_child(dev_drive_cont, 1);
+
+	create_prefs_note(dev_drive_cont,
+					  "Adds a USB drive for installing\nplugins over USB.\nUses 16MB of plugin memory.");
 }
 
 } // namespace MetaModule

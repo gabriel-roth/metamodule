@@ -52,6 +52,15 @@ static bool read(ryml::ConstNodeRef const &node, AudioSettings *audio) {
 	read_or_default(node, "sample_rate", audio, &AudioSettings::sample_rate);
 	read_or_default(node, "block_size", audio, &AudioSettings::block_size);
 	read_or_default(node, "max_overrun_retries", audio, &AudioSettings::max_overrun_retries);
+
+	using enum AudioSettings::AutoRebalance;
+	if (node.has_child("auto_rebalance")) {
+		auto val = node["auto_rebalance"].val();
+		audio->auto_rebalance = val == "Off" ? Off : val == "EveryLoad" ? EveryLoad : AfterOverload;
+	} else {
+		audio->auto_rebalance = AudioSettings::DefaultAutoRebalance;
+	}
+
 	audio->make_valid();
 
 	return true;
@@ -239,6 +248,16 @@ static bool read(ryml::ConstNodeRef const &node, MidiPCPatchLoadSettings *settin
 	return true;
 }
 
+static bool read(ryml::ConstNodeRef const &node, DeveloperSettings *settings) {
+	if (!node.is_map())
+		return false;
+
+	read_or_default(node, "enabled", settings, &DeveloperSettings::enabled);
+
+	settings->make_valid();
+	return true;
+}
+
 static bool read(ryml::ConstNodeRef const &node, VideoSettings *settings) {
 	if (!node.is_map())
 		return false;
@@ -296,6 +315,7 @@ bool parse(std::span<char> yaml, UserSettings *settings) {
 	read_or_default(node, "button_exp_knobset", settings, &UserSettings::button_exp_knobset);
 	read_or_default(node, "notifications", settings, &UserSettings::notifications);
 	read_or_default(node, "video", settings, &UserSettings::video);
+	read_or_default(node, "developer", settings, &UserSettings::developer);
 
 	if (node.is_map() && node.has_child("usb_role_mode")) {
 		using enum UsbRoleMode;
@@ -308,7 +328,8 @@ bool parse(std::span<char> yaml, UserSettings *settings) {
 	using enum UsbDeviceMode;
 	if (node.is_map() && node.has_child("usb_device_mode")) {
 		auto v = node["usb_device_mode"].val();
-		settings->usb_device_mode = v == "Video" ? Video : v == "MIDI" ? Midi : v == "Console" ? Cdc : Midi;
+		// "MIDI" and "Console" are the pre-composite names for what is now one mode
+		settings->usb_device_mode = v == "Video" ? Video : MidiConsole;
 	} else {
 		settings->usb_device_mode = UserSettings{}.usb_device_mode;
 	}

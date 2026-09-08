@@ -1,4 +1,5 @@
 #pragma once
+#include "delay.hh"
 #include "debug.hh"
 #include "drivers/fusb302.hh"
 #include "dynload/plugin_manager.hh"
@@ -111,6 +112,11 @@ public:
 		if (settings.plugin_preload.slugs.size())
 			delay_ms(600); //allow time for ???
 
+		// Put known large allocators to the front
+		std::ranges::partition(settings.plugin_preload.slugs, [](auto const &s) {
+			return s == "UnfilteredVolume1" || s == "4ms-ROMplers" || s == "MADZINE";
+		});
+
 		auto preloader = PreLoader{plugin_manager, settings.plugin_preload.slugs};
 
 		while (true) {
@@ -195,6 +201,10 @@ private:
 		} else if (load_status.error_string.size()) {
 			notify_queue.put({load_status.error_string, Notification::Priority::Status, 1500});
 		}
+
+		// Advance the load re-balancing trials (started by the Load Balance
+		// panel or automatically, per the Auto Re-balance preference)
+		patch_playloader.update_rebalance_trials(lv_tick_get());
 	}
 
 	uint32_t last_page_update_tm = 0;

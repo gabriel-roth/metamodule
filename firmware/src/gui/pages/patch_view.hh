@@ -1,4 +1,5 @@
 #pragma once
+#include "delay.hh"
 #include "CoreModules/elements/element_counter.hh"
 #include "gui/dyn_display.hh"
 #include "gui/elements/map_ring_animate.hh"
@@ -32,7 +33,14 @@ struct PatchViewPage : PageBase {
 		, cable_drawer{modules_cont, drawn_elements}
 		, page_settings{settings.patch_view}
 		, settings_menu{settings.patch_view, gui_state}
-		, desc_panel{patch_playloader, patches, settings.patch_suggested_audio, patch_mod_queue}
+		, desc_panel{patch_playloader,
+					 patches,
+					 settings.patch_suggested_audio,
+					 patch_mod_queue,
+					 metaparams,
+					 settings.patch_view,
+					 page_list,
+					 args}
 		, file_menu{patch_playloader,
 					patch_storage,
 					patches,
@@ -268,6 +276,14 @@ struct PatchViewPage : PageBase {
 			}
 		}
 
+		if (is_patch_playloaded) {
+			redraw_all_params(drawn_elements, [this](uint16_t module_idx, uint16_t param_idx) {
+				return patch_playloader.param_value(module_idx, param_idx);
+			});
+		}
+
+		raise_mapped_params(drawn_elements);
+
 		if (modules_skipped_for_size) {
 			std::string msg = "Not displaying: " + modules_skipped_slugs + "because graphics buffer is full";
 			notify_queue.put({msg, Notification::Priority::Info, 4000});
@@ -301,6 +317,9 @@ struct PatchViewPage : PageBase {
 			ModuleDrawer{modules_cont, page_settings.view_height_px}.draw_mapped_ring(
 				*patch, module_id, knobset, canvas, drawn_el);
 		}
+
+		raise_mapped_params(drawn_elements);
+
 		update_map_ring_style();
 	}
 
@@ -815,7 +834,7 @@ private:
 					page->gui_state.force_redraw_patch = true;
 				} else {
 					page->patch_playloader.apply_suggested_audio_settings();
-					page->patch_playloader.start_audio();
+					page->patch_playloader.resume_audio();
 				}
 			});
 
