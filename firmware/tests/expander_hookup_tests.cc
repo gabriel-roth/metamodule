@@ -1,5 +1,6 @@
 #include "doctest.h"
 #include "patch_play/expander_hookup.hh"
+#include <cstdint>
 #include <vector>
 
 namespace
